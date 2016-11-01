@@ -45,19 +45,29 @@ func loadMonitor(event FEvent) error {
 	}
 	//解析系统环境变量
 	section := config.DEFAULT_SECTION
-	if options, _ := cfg.SectionOptions(section); options != nil {
+	if options, err := cfg.SectionOptions(section); err == nil && options != nil {
 		for _, option := range options {
 			//on=true 表示开启监控，off表示不监控
 			if on, err := cfg.Bool(section, option); err != nil {
 				golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
 			} else if on {
-				fsm.Add(option, nil)
+				if foption, err := cfg.DynamicString(option); err == nil {
+					fsm.Add(TransPath(foption), nil)
+				} else {
+					golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
+				}
 			} else {
-				fsm.Del(option)
+				if foption, err := cfg.DynamicString(option); err == nil {
+					fsm.Del(TransPath(foption))
+				} else {
+					golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
+				}
 			}
 		}
+		log.Infoln("LOAD FSM Monitor List OK.")
+	} else {
+		log.Warnf("LOAD FSM Monitor List err:%v", err)
 	}
-	log.Debugln("LOAD FSM Monitor List OK")
 	return nil
 }
 
@@ -72,7 +82,7 @@ func Start() {
 	}
 	configurl = TransPath(configurl)
 	fsm.Start(loadMonitor, configurl)
-	err := loadMonitor(FEvent{originalFsm.Event{Name: configurl, Op: originalFsm.Write}})
+	err := loadMonitor(FEvent{originalFsm.Event{Name: configurl, Op: originalFsm.Write}, nil})
 	if err != nil {
 		panic(err)
 	}

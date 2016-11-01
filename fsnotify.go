@@ -17,6 +17,8 @@ import (
 
 	originalFsm "github.com/fsnotify/fsnotify"
 	"github.com/zxfonline/chanutil"
+	. "github.com/zxfonline/trace"
+	"golang.org/x/net/trace"
 )
 
 var log *golog.Logger = golog.New("FileMonitor")
@@ -40,7 +42,29 @@ type FileSystemMonitor struct {
 
 type FEvent struct {
 	originalFsm.Event
+	tr trace.Trace
 }
+
+func (fe *FEvent) TraceFinish() {
+	if fe.tr != nil {
+		fe.tr.Finish()
+		fe.tr = nil
+	}
+}
+
+func (fe *FEvent) TracePrintf(format string, a ...interface{}) {
+	if fe.tr != nil {
+		fe.tr.LazyPrintf(format, a...)
+	}
+}
+
+func (fe *FEvent) TraceErrorf(format string, a ...interface{}) {
+	if fe.tr != nil {
+		fe.tr.LazyPrintf(format, a...)
+		fe.tr.SetError()
+	}
+}
+
 type LessFileState struct {
 	Time time.Time
 }
@@ -196,7 +220,7 @@ func (p *FileSystemMonitor) doMonitor() {
 						if fs, ok := p.files[path]; ok {
 							if fs.Time.Before(time.Now()) {
 								fs.Time = time.Now().Add(p.WaitTime)
-								ev := FEvent{originalFsm.Event{Name: path, Op: v.Op}}
+								ev := FEvent{originalFsm.Event{Name: path, Op: v.Op}, nil}
 								if action, ok := p.actions[path]; ok && action != nil {
 									if err := doAction(action, ev); err != nil {
 										log.Warnf("write event error:%v,path:%v", err, path)
@@ -222,6 +246,9 @@ func (p *FileSystemMonitor) doMonitor() {
 }
 
 func doAction(action func(FEvent) error, ev FEvent) (err error) {
+	if EnableTracing {
+		ev.tr = trace.New("fsm", ev.Name)
+	}
 	defer func() {
 		if e := recover(); e != nil {
 			switch e.(type) {
@@ -230,7 +257,9 @@ func doAction(action func(FEvent) error, ev FEvent) (err error) {
 			default:
 				err = fmt.Errorf("%v", e)
 			}
+			ev.TraceErrorf("fsm err:%v", err)
 		}
+		ev.TraceFinish()
 	}()
 	err = action(ev)
 	return
