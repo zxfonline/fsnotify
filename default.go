@@ -12,6 +12,7 @@ import (
 
 	originalFsm "github.com/fsnotify/fsnotify"
 	"github.com/zxfonline/config"
+	"github.com/zxfonline/fileutil"
 	"github.com/zxfonline/golog"
 )
 
@@ -52,13 +53,13 @@ func loadMonitor(event FEvent) error {
 				golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
 			} else if on {
 				if foption, err := cfg.DynamicString(option); err == nil {
-					fsm.Add(TransPath(foption), nil)
+					fsm.Add(fileutil.TransPath(foption), nil)
 				} else {
 					golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
 				}
 			} else {
 				if foption, err := cfg.DynamicString(option); err == nil {
-					fsm.Del(TransPath(foption))
+					fsm.Del(fileutil.TransPath(foption))
 				} else {
 					golog.Errorf("FSM TABLE 节点解析错误:section=%s,option=%s,error=%v", section, option, err)
 				}
@@ -80,7 +81,7 @@ func Start() {
 	if configurl == "" {
 		panic(errors.New(`没找到系统变量:"fsm_monitor"`))
 	}
-	configurl = TransPath(configurl)
+	configurl = fileutil.TransPath(configurl)
 	fsm.Start(loadMonitor, configurl)
 	err := loadMonitor(FEvent{originalFsm.Event{Name: configurl, Op: originalFsm.Write}, nil})
 	if err != nil {

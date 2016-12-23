@@ -17,6 +17,7 @@ import (
 
 	originalFsm "github.com/fsnotify/fsnotify"
 	"github.com/zxfonline/chanutil"
+	"github.com/zxfonline/fileutil"
 	. "github.com/zxfonline/trace"
 	"golang.org/x/net/trace"
 )
@@ -111,7 +112,7 @@ func (p *FileSystemMonitor) Add(path string, action func(FEvent) error) {
 		log.Warnf("Add Watch Error:fms no closed or not opening,Path:%v", path)
 		return
 	}
-	path = TransPath(path)
+	path = fileutil.TransPath(path)
 	if fi, err := os.Stat(path); err != nil {
 		log.Warnf("Add Watch Error:%v,Path:%v", err, path)
 	} else if fi == nil {
@@ -142,7 +143,7 @@ func (p *FileSystemMonitor) adddir(dir string, action func(FEvent) error) {
 		if f == nil {
 			return nil
 		}
-		path = TransPath(path)
+		path = fileutil.TransPath(path)
 		if f.IsDir() {
 			if p.ignoreFilter(path) {
 				log.Debugf("monitor ignore file,path:%v", path)
@@ -180,7 +181,7 @@ func DefaultIgnoreFilter(path string) bool {
 	if path == "./" {
 		return false
 	}
-	path = TransPath(path)
+	path = fileutil.TransPath(path)
 	if strings.HasPrefix(filepath.Base(path), ".") {
 		return true
 	}
@@ -192,7 +193,7 @@ func (p *FileSystemMonitor) doMonitor() {
 		select {
 		case v := <-p.w.Events:
 			path := v.Name
-			path = TransPath(path)
+			path = fileutil.TransPath(path)
 			fi, err := os.Stat(path)
 			if err == nil && fi != nil {
 				if fi.IsDir() { //文件夹存在
@@ -266,20 +267,20 @@ func doAction(action func(FEvent) error, ev FEvent) (err error) {
 }
 
 //将路径转成监控文件统一使用的路径格式
-func TransPath(path string) string {
-	path = filepath.Clean(path)
-	// 不用绝对路径
-	//	if !filepath.IsAbs(path) {
-	//		if abs, err := filepath.Abs(path); err == nil {
-	//			path = abs
-	//		}
-	//	}
-	path = strings.Replace(path, "\\", "/", -1)
-	return path
-}
+//func TransPath(path string) string {
+//	path = filepath.Clean(path)
+//	// 不用绝对路径
+//	//	if !filepath.IsAbs(path) {
+//	//		if abs, err := filepath.Abs(path); err == nil {
+//	//			path = abs
+//	//		}
+//	//	}
+//	path = strings.Replace(path, "\\", "/", -1)
+//	return path
+//}
 
 func (p *FileSystemMonitor) deletePath(path string) {
-	path = TransPath(path)
+	path = fileutil.TransPath(path)
 	if v, ok := p.watchDir[path]; ok && v {
 		p.watchDir[path] = false
 		if err := p.w.Remove(path); err != nil {
