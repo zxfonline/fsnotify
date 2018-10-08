@@ -5,9 +5,7 @@
 package fsnotify
 
 import (
-	"errors"
 	"fmt"
-	"os"
 
 	"sync/atomic"
 
@@ -74,13 +72,9 @@ func loadMonitor(event FEvent) error {
 }
 
 //开启监控
-func Start() {
+func Start(configurl string) {
 	if !atomic.CompareAndSwapInt32(&loadstate, 0, 1) {
 		return
-	}
-	configurl := os.Getenv("fsm_monitor")
-	if configurl == "" {
-		panic(errors.New(`没找到系统变量:"fsm_monitor"`))
 	}
 	configurl = fileutil.TransPath(configurl)
 	fsm.Start(loadMonitor, configurl)

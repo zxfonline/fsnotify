@@ -19,8 +19,8 @@ import (
 	originalFsm "github.com/fsnotify/fsnotify"
 	"github.com/zxfonline/chanutil"
 	"github.com/zxfonline/fileutil"
+	trace "github.com/zxfonline/golangtrace"
 	. "github.com/zxfonline/trace"
-	"golang.org/x/net/trace"
 )
 
 var log *golog.Logger = golog.New("FileMonitor")
