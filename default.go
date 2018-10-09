@@ -64,9 +64,9 @@ func loadMonitor(event FEvent) error {
 				}
 			}
 		}
-		log.Infoln("LOAD FSM Monitor List OK.")
+		logger.Infoln("LOAD FSM Monitor List OK.")
 	} else {
-		log.Warnf("LOAD FSM Monitor List err:%v", err)
+		logger.Warnf("LOAD FSM Monitor List err:%v", err)
 	}
 	return nil
 }
