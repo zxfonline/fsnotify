@@ -23,7 +23,7 @@ import (
 	. "github.com/zxfonline/trace"
 )
 
-var log *golog.Logger = golog.New("FileMonitor")
+var logger *golog.Logger = golog.New("FileMonitor")
 
 /**文件监控器
 * 对指定目录下的所有文件的修改进行监控
@@ -101,7 +101,7 @@ func (p *FileSystemMonitor) start(action func(FEvent) error, paths []string) {
 //递归删除指定路径的监控文件或者目录、子目录
 func (p *FileSystemMonitor) Del(path string) {
 	if atomic.LoadInt32(&p.startstate) != 1 {
-		log.Warnf("Add Watch Error:fms no closed or not opening,Path:%v", path)
+		logger.Warnf("Add Watch Error:fms no closed or not opening,Path:%v", path)
 		return
 	}
 	p.deletePath(path)
@@ -110,31 +110,31 @@ func (p *FileSystemMonitor) Del(path string) {
 //监控指定路径的文件或者目录 当action=nil时，不替换原有的事件
 func (p *FileSystemMonitor) Add(path string, action func(FEvent) error) {
 	if atomic.LoadInt32(&p.startstate) != 1 {
-		log.Warnf("Add Watch Error:fms no closed or not opening,Path:%v", path)
+		logger.Warnf("Add Watch Error:fms no closed or not opening,Path:%v", path)
 		return
 	}
 	path = fileutil.TransPath(path)
 	if fi, err := os.Stat(path); err != nil {
-		log.Warnf("Add Watch Error:%v,Path:%v", err, path)
+		logger.Warnf("Add Watch Error:%v,Path:%v", err, path)
 	} else if fi == nil {
 		return
 	} else if fi.IsDir() {
 		p.adddir(path, action)
 	} else if p.ignoreFilter(path) {
-		log.Debugf("monitor ignore file,path:%v", path)
+		logger.Debugf("monitor ignore file,path:%v", path)
 	} else {
 		if _, ok := p.files[path]; !ok {
 			if err := p.w.Add(path); err != nil {
-				log.Warnf("Add Watch Error:%v,Path:%v", err, path)
+				logger.Warnf("Add Watch Error:%v,Path:%v", err, path)
 				return
 			}
 		}
 		p.files[path] = &LessFileState{Time: time.Now()}
 		if action != nil {
 			p.actions[path] = action
-			log.Infof("Replace Watch:%v", path)
+			logger.Infof("Replace Watch:%v", path)
 		} else {
-			log.Infof("Add Watch:%v,no action", path)
+			logger.Infof("Add Watch:%v,no action", path)
 		}
 	}
 }
@@ -147,32 +147,32 @@ func (p *FileSystemMonitor) adddir(dir string, action func(FEvent) error) {
 		path = fileutil.TransPath(path)
 		if f.IsDir() {
 			if p.ignoreFilter(path) {
-				log.Debugf("monitor ignore file,path:%v", path)
+				logger.Debugf("monitor ignore file,path:%v", path)
 				return nil
 			}
 			if v, ok := p.watchDir[path]; !ok || !v {
 				if err := p.w.Add(path); err != nil {
-					log.Warnf("Add Watch Error:%v,Path:%v", err, path)
+					logger.Warnf("Add Watch Error:%v,Path:%v", err, path)
 					return nil
 				}
 				p.watchDir[path] = true
 			}
 			if action != nil {
 				p.actions[path] = action
-				log.Infof("Replace Watch:%v", path)
+				logger.Infof("Replace Watch:%v", path)
 			} else {
-				log.Infof("Add Watch:%v,no action", path)
+				logger.Infof("Add Watch:%v,no action", path)
 			}
 		} else {
 			p.files[path] = &LessFileState{Time: time.Now()}
 			if action != nil {
 				p.actions[path] = action
 			}
-			log.Debugf("Found File:%v", path)
+			logger.Debugf("Found File:%v", path)
 		}
 		return nil
 	}); e != nil {
-		log.Warnf("Add Watch Error:%v,Path:%v", e, dir)
+		logger.Warnf("Add Watch Error:%v,Path:%v", e, dir)
 	}
 }
 
@@ -203,7 +203,7 @@ func (p *FileSystemMonitor) doMonitor() {
 						if action, ok := p.actions[ppath]; ok && action != nil {
 							p.adddir(path, action)
 						} else {
-							log.Warnf("Add Watch Error:parent path no action event,File:%v", path)
+							logger.Warnf("Add Watch Error:parent path no action event,File:%v", path)
 						}
 					}
 				} else {
@@ -213,9 +213,9 @@ func (p *FileSystemMonitor) doMonitor() {
 							if action, ok := p.actions[ppath]; ok && action != nil {
 								p.files[path] = &LessFileState{Time: time.Now()}
 								p.actions[path] = action
-								log.Debugf("Found File:%v", path)
+								logger.Debugf("Found File:%v", path)
 							} else {
-								log.Infof("Found File Error:parent path no action event,File:%v", path)
+								logger.Infof("Found File Error:parent path no action event,File:%v", path)
 							}
 						}
 					} else if v.Op&originalFsm.Write == originalFsm.Write {
@@ -225,12 +225,12 @@ func (p *FileSystemMonitor) doMonitor() {
 								ev := FEvent{originalFsm.Event{Name: path, Op: v.Op}, nil}
 								if action, ok := p.actions[path]; ok && action != nil {
 									if err := doAction(action, ev); err != nil {
-										log.Warnf("write event error:%v,path:%v", err, path)
+										logger.Warnf("write event error:%v,path:%v", err, path)
 									} else {
-										log.Debugf("write event:%v", ev.String())
+										logger.Debugf("write event:%v", ev.String())
 									}
 								} else {
-									log.Debugf("write event no action:%v", ev.String())
+									logger.Debugf("write event no action:%v", ev.String())
 								}
 							}
 						}
@@ -240,7 +240,7 @@ func (p *FileSystemMonitor) doMonitor() {
 				p.deletePath(path)
 			}
 		case err := <-p.w.Errors:
-			log.Warnf("monitor error:%v", err)
+			logger.Warnf("monitor error:%v", err)
 		case <-p.stopD:
 			q = true
 		}
@@ -285,9 +285,9 @@ func (p *FileSystemMonitor) deletePath(path string) {
 	if v, ok := p.watchDir[path]; ok && v {
 		p.watchDir[path] = false
 		if err := p.w.Remove(path); err != nil {
-			log.Warnf("delete dir:%v,err:%v", path, err)
+			logger.Warnf("delete dir:%v,err:%v", path, err)
 		} else {
-			log.Infof("delete dir:%v", path)
+			logger.Infof("delete dir:%v", path)
 		}
 		for sp, _ := range p.files { //删除子目录监控
 			if strings.HasPrefix(sp, path) {
@@ -296,9 +296,9 @@ func (p *FileSystemMonitor) deletePath(path string) {
 				if v, ok := p.watchDir[sup]; ok && v {
 					p.watchDir[sup] = false
 					if err := p.w.Remove(sup); err != nil {
-						log.Warnf("delete dir:%v,err:%v", sup, err)
+						logger.Warnf("delete dir:%v,err:%v", sup, err)
 					} else {
-						log.Infof("delete dir:%v", sup)
+						logger.Infof("delete dir:%v", sup)
 					}
 				}
 			}
@@ -306,9 +306,9 @@ func (p *FileSystemMonitor) deletePath(path string) {
 	} else if _, ok := p.files[path]; ok {
 		delete(p.files, path)
 		if err := p.w.Remove(path); err != nil {
-			log.Warnf("delete file:%v,err:%v", path, err)
+			logger.Warnf("delete file:%v,err:%v", path, err)
 		} else {
-			log.Infof("delete file:%v", path)
+			logger.Infof("delete file:%v", path)
 		}
 	}
 }
