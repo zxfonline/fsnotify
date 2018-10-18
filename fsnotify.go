@@ -249,7 +249,7 @@ func (p *FileSystemMonitor) doMonitor() {
 
 func doAction(action func(FEvent) error, ev FEvent) (err error) {
 	if EnableTracing {
-		ev.tr = trace.New("fsm", ev.Name)
+		ev.tr = trace.New("fsm", ev.Name, false)
 	}
 	defer func() {
 		if e := recover(); e != nil {
